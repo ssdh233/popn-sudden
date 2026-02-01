@@ -1,7 +1,5 @@
-import { FormField, Divider, Header, Button, Form } from 'semantic-ui-react'
-import 'semantic-ui-css/semantic.min.css'
+import { FormField, Divider, Header, Button, Form, Modal, ModalHeader, ModalContent, TabPane } from 'semantic-ui-react'
 import { useEffect, useState, useRef } from 'react';
-import Head from 'next/head';
 
 function Page() {
   const [high, setHigh] = useState("");
@@ -27,6 +25,9 @@ function Page() {
 
   const [isStandalone, setIsStandalone] = useState("init");
 
+  const [showIosAddToHomeDialog, setShowIosAddToHomeDialog] = useState(false);
+  const [addToHomeSuccessDialog, setAddToHomeSuccessDialog] = useState(false);
+
   useEffect(() => {
     setIsStandalone(window.matchMedia("(display-mode: standalone)").matches);
   }, []);
@@ -34,9 +35,7 @@ function Page() {
   const deferredPrompt = useRef();
 
   useEffect(() => {
-    console.log("Adding beforeinstallprompt event...")
     window.addEventListener("beforeinstallprompt", (e) => {
-      console.log("Calling beforeinstallprompt")
       // 自動表示を止める
       e.preventDefault();
       deferredPrompt.current = e;
@@ -44,11 +43,6 @@ function Page() {
   }, [])
 
   return <>
-    <Head>
-      <link rel="manifest" href="/manifest.json" />
-      <meta name="theme-color" content="#000000" />
-      <link rel="apple-touch-icon" href="/icons/icon-192x192.png" />
-    </Head>
     <main style={{
       maxWidth: 360,
       margin: "auto",
@@ -58,10 +52,12 @@ function Page() {
       padding: 16
     }}><h1 style={{ fontSize: 24, textAlign: "center", margin: 16 }}>ポップン新筐体用<br />SUDDEN+数値計算ツール</h1>
       <Form>
-        <FormField inline>
-          <label>SUDDEN+</label>
-          <label style={{ fontSize: 24 }} >{sudden.toFixed(1)}</label>
-        </FormField>
+        <TabPane style={{ background: "rgba(0,0,0,.05)", margin: "24px 0" }}>
+          <FormField inline style={{ display: "flex", alignItems: "center" }}>
+            <label style={{ fontSize: 16 }}>SUDDEN+</label>
+            <label style={{ fontSize: 28, padding: 8 }} >{sudden.toFixed(1)}</label>
+          </FormField>
+        </TabPane>
         <FormField inline>
           <label style={{ width: 42 }}>高BPM</label>
           <input type="number" placeholder='0' value={high} onChange={event => {
@@ -102,21 +98,39 @@ function Page() {
       </Form>
       {isStandalone !== "init" && !isStandalone &&
         <Button style={{ marginTop: 24 }} onClick={async () => {
-          if (!deferredPrompt.current) return;
+          const isIOS = /iPhone|iPad|iPod/.test(navigator.userAgent);
 
-          deferredPrompt.current.prompt(); // ← これで「ホーム画面に追加」ダイアログ表示
-          const { outcome } = await deferredPrompt.current.userChoice;
+          if (isIOS) {
+            setShowIosAddToHomeDialog(true);
+          } else {
+            if (!deferredPrompt.current) return;
 
-          console.log("install result:", outcome);
-          deferredPrompt.current = null;
+            deferredPrompt.current.prompt(); // ← これで「ホーム画面に追加」ダイアログ表示
+            const { outcome } = await deferredPrompt.current.userChoice;
+
+            deferredPrompt.current = null;
+
+            if (outcome === "accepted") {
+              setAddToHomeSuccessDialog(true);
+            }
+          }
+
         }}>ホーム画面に追加</Button>
       }
-      {/* {showWarning &&
-            <Message warning>
-                <p>ROOF/LIFTの数値を更新したため、現在のリンクをブックマークに追加し直してください。</p>
-                <p>ホーム画面に追加した方は何もしなくてOKです。</p>
-            </Message>
-        } */}
+      <Modal open={showIosAddToHomeDialog} onClose={() => setShowIosAddToHomeDialog(false)}>
+        <ModalHeader>ホーム画面に追加</ModalHeader>
+        <ModalContent>
+          <p>iOSの場合は、<img style={{ width: 24 }} src="/popn-sudden/icons/share-apple.svg" />ボタンをクリックして、「ホーム画面に追加」で手動で追加してください。</p>
+          <p><img style={{ width: 24 }} src="/popn-sudden/icons/share-apple.svg" />は、Safariでは下の中央、Chromeではアドレスバーの右にあります。</p>
+        </ModalContent>
+      </Modal>
+      <Modal open={addToHomeSuccessDialog} onClose={() => setAddToHomeSuccessDialog(false)}>
+        <ModalHeader>ホーム画面に追加しました</ModalHeader>
+        <ModalContent>
+          これからはホーム画面からこのアプリ<img style={{ width: 32 }} src="/icons/icon-192x192.png" />を開いてください。
+        </ModalContent>
+      </Modal>
+      <Button as="a" href="/popn-sudden/explanation" style={{ marginTop: 24 }}>計算式説明</Button>
     </main>
   </>
 }

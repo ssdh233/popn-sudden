@@ -2,6 +2,13 @@
 const nextConfig = {
   reactStrictMode: true,
   swcMinify: true,
+  basePath: '/popn-sudden',
+  assetPrefix: '/popn-sudden/',
 };
 
-module.exports = nextConfig;
+const withPWA = require('next-pwa')({
+  dest: 'public',
+  scope: "/popn-sudden/"
+})
+
+module.exports = withPWA(nextConfig);
